@@ -36,23 +36,17 @@ const NAV_ITEMS = [
     path: '/physio',
   },
   {
-    id:'NutritionDashboard',
-    label:'Nutrition',
-    icon:BookOpen,
-    path:'/nutrition',
+    id: 'nutrition',
+    label: 'Nutrition',
+    icon: BookOpen,
+    path: '/nutrition',
   },
-   {
-    id:'TrainerDashboard',
-    label:'Trainer',
-    icon:UserCog,
-    path:'/trainer',
+  {
+    id: 'trainer',
+    label: 'Trainer',
+    icon: UserCog,
+    path: '/trainer',
   },
-  // {
-  //   id: 'trainer',
-  //   label: 'Trainer',
-  //   icon: UserCog,
-  //   path: '/trainer',
-  // },
   {
     id: 'reports',
     label: 'Reports',
@@ -61,16 +55,26 @@ const NAV_ITEMS = [
   },
 ]
 
-export default function Sidebar({ activePath, onNavigate }) {
+export default function Sidebar({ activePath, onNavigate, role }) {
   const [expanded, setExpanded] = useState({})
 
   const toggle = (id) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }))
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
   const isActive = (path) => activePath === path
+
   const isGroupActive = (item) =>
-    item.children?.some(c => activePath === c.path)
+    item.children?.some((c) => activePath === c.path)
+
+  // 🔥 ROLE-BASED FILTER
+  const filteredItems = NAV_ITEMS.filter((item) => {
+    if (role === 'admin') return true
+    if (role === 'trainer') return item.path === '/trainer'
+    if (role === 'physio') return item.path === '/physio'
+    if (role === 'nutrition') return item.path === '/nutrition'
+    return false
+  })
 
   return (
     <aside
@@ -113,7 +117,7 @@ export default function Sidebar({ activePath, onNavigate }) {
           padding: '12px 0',
         }}
       >
-        {NAV_ITEMS.map((item) => {
+        {filteredItems.map((item) => {
           const Icon = item.icon
           const hasChildren = !!item.children
           const isOpen = expanded[item.id]
@@ -145,12 +149,14 @@ export default function Sidebar({ activePath, onNavigate }) {
                   gap: '10px',
                 }}
                 onMouseEnter={(e) => {
-                  if (!itemActive && !(groupActive && isOpen))
+                  if (!itemActive && !(groupActive && isOpen)) {
                     e.currentTarget.style.backgroundColor = '#d8d8d8'
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  if (!itemActive && !(groupActive && isOpen))
+                  if (!itemActive && !(groupActive && isOpen)) {
                     e.currentTarget.style.backgroundColor = 'transparent'
+                  }
                 }}
               >
                 <Icon
@@ -161,6 +167,7 @@ export default function Sidebar({ activePath, onNavigate }) {
                     flexShrink: 0,
                   }}
                 />
+
                 <span
                   style={{
                     flex: 1,
@@ -182,7 +189,7 @@ export default function Sidebar({ activePath, onNavigate }) {
                   ))}
               </div>
 
-              {/* Children (kept for future use) */}
+              {/* Children (future use) */}
               {hasChildren && isOpen && (
                 <div style={{ backgroundColor: '#e0e0e0' }}>
                   {item.children.map((child) => {

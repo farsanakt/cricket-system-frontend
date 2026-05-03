@@ -4,6 +4,7 @@ import {
   User, AlertTriangle, ArrowLeft, ChevronRight,
   Calendar, Clock, Activity, Moon, Zap, Heart,
   CheckCircle2, FileText, Plus, Target,
+  Dumbbell, ClipboardCheck, Shield, Check, X,
 } from "lucide-react";
 
 const ALL_EXERCISES_LOOKUP = [
@@ -56,11 +57,54 @@ const MOCK_PLAYERS = [
   { id: 4, name: "Nikhil Krishnan", role: "Wicket-keeper", number: "04", reports: [] },
 ];
 
+// ── Pending trainer workout plans ─────────────────────────────────────────────
+const INITIAL_PENDING_PLANS = [
+  {
+    id: "plan1", trainerId: "t1", trainerName: "Rahul (Trainer)",
+    playerId: 2, playerName: "Rahul Das", playerRole: "Bowler",
+    planName: "Shoulder Rehab Phase 1", createdAt: "2025-05-01",
+    exercises: [
+      { name: "Resistance Band Pull-Apart", reps: "15 reps", sets: 3 },
+      { name: "Pendulum Swings",            reps: "30 seconds", sets: 3 },
+      { name: "Wall Slides",               reps: "12 reps", sets: 3 },
+    ],
+    notes: "Light shoulder mobility work only. No throwing.",
+    status: "Pending", physioNote: "",
+  },
+  {
+    id: "plan2", trainerId: "t1", trainerName: "Rahul (Trainer)",
+    playerId: 1, playerName: "Arjun Menon", playerRole: "Batsman",
+    planName: "Pre-Season Conditioning Week 1", createdAt: "2025-04-30",
+    exercises: [
+      { name: "Goblet Squats",        reps: "12 reps", sets: 3 },
+      { name: "Dead Bug",             reps: "10 reps", sets: 3 },
+      { name: "Single Leg Balance",   reps: "30 seconds", sets: 3 },
+    ],
+    notes: "Focus on stability and core activation.",
+    status: "Pending", physioNote: "",
+  },
+];
+
+// ── Injury clearance requests ─────────────────────────────────────────────────
+const INITIAL_CLEARANCE_REQUESTS = [
+  {
+    id: "cr1", playerId: 2, playerName: "Rahul Das", playerRole: "Bowler",
+    injuryType: "Shoulder Strain", bodyPart: "Right Shoulder",
+    requestDate: "2025-05-02",
+    playerNote: "Shoulder feels much better. No pain during light throwing. Ready to resume.",
+    status: "Pending", appointment: null, physioNote: "",
+  },
+];
+
 // ─── View constants ───────────────────────────────────────────────────────────
-const V_PLAYERS = "players";
-const V_REPORTS = "reports";
-const V_DETAIL  = "detail";
-const V_SESSION = "session";
+const V_PLAYERS          = "players";
+const V_REPORTS          = "reports";
+const V_DETAIL           = "detail";
+const V_SESSION          = "session";
+const V_PENDING_PLANS    = "pending_plans";
+const V_PLAN_DETAIL      = "plan_detail";
+const V_CLEARANCE        = "clearance";
+const V_CLEARANCE_DETAIL = "clearance_detail";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const card = (extra = {}) => ({
@@ -117,29 +161,66 @@ const BackBtn = ({ label, onClick }) => (
       background: "none", border: "none", color: "#888",
       fontSize: "13px", fontWeight: "600", cursor: "pointer",
       marginBottom: "18px", padding: "0",
-    }}>
-    <ArrowLeft size={16} style={{ color: "#888" }} /> {label}
+    }}
+    onMouseEnter={e => (e.currentTarget.style.color = "#e87722")}
+    onMouseLeave={e => (e.currentTarget.style.color = "#888")}
+  >
+    <ArrowLeft size={16} style={{ color: "inherit" }} /> {label}
+  </button>
+);
+
+const OBtn = ({ children, onClick, style = {} }) => (
+  <button onClick={onClick}
+    style={{
+      display: "inline-flex", alignItems: "center", gap: "7px",
+      padding: "9px 20px", backgroundColor: "#e87722",
+      color: "#fff", border: "none", borderRadius: "8px",
+      fontSize: "13px", fontWeight: "700", cursor: "pointer",
+      boxShadow: "0 2px 8px rgba(232,119,34,0.28)", ...style,
+    }}
+    onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#d06a18")}
+    onMouseLeave={e => (e.currentTarget.style.backgroundColor = style.backgroundColor || "#e87722")}
+  >
+    {children}
   </button>
 );
 
 // ─── Main component ───────────────────────────────────────────────────────────
 const Physio = () => {
-  const [players]      = useState(MOCK_PLAYERS);
-  const [view,           setView]         = useState(V_PLAYERS);
-  const [activePlayer,   setActivePlayer] = useState(null);
-  const [activeReport,   setActiveReport] = useState(null);
-  const [savedSessions,  setSavedSessions] = useState({});
+  const [players]             = useState(MOCK_PLAYERS);
+  const [view,                  setView]                = useState(V_PLAYERS);
+  const [activePlayer,          setActivePlayer]        = useState(null);
+  const [activeReport,          setActiveReport]        = useState(null);
+  const [savedSessions,         setSavedSessions]       = useState({});
+  const [pendingPlans,          setPendingPlans]        = useState(INITIAL_PENDING_PLANS);
+  const [clearanceRequests,     setClearanceRequests]   = useState(INITIAL_CLEARANCE_REQUESTS);
+  const [activePlan,            setActivePlan]          = useState(null);
+  const [activeClearance,       setActiveClearance]     = useState(null);
+  const [physioNote,            setPhysioNote]          = useState("");
+  const [apptDate,              setApptDate]            = useState("");
+  const [apptTime,              setApptTime]            = useState("");
+  const [toast,                 setToast]               = useState(null);
+
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const hasInjury  = (p) => p.reports.some((r) => r.injury);
   const latestDate = (p) => p.reports.length ? p.reports[0].date : null;
+
+  const pendingPlanCount      = pendingPlans.filter(p => p.status === "Pending").length;
+  const pendingClearanceCount = clearanceRequests.filter(c => c.status === "Pending").length;
 
   const openPlayer = (player) => { setActivePlayer(player); setActiveReport(null); setView(V_REPORTS); };
   const openReport = (report) => { setActiveReport(report); setView(V_DETAIL); };
 
   const goBack = () => {
-    if (view === V_SESSION) { setView(V_DETAIL); return; }
-    if (view === V_DETAIL)  { setView(V_REPORTS); setActiveReport(null); return; }
-    if (view === V_REPORTS) { setView(V_PLAYERS); setActivePlayer(null); return; }
+    if (view === V_SESSION)          { setView(V_DETAIL);   return; }
+    if (view === V_DETAIL)           { setView(V_REPORTS);  setActiveReport(null); return; }
+    if (view === V_REPORTS)          { setView(V_PLAYERS);  setActivePlayer(null); return; }
+    if (view === V_PLAN_DETAIL)      { setView(V_PENDING_PLANS); return; }
+    if (view === V_CLEARANCE_DETAIL) { setView(V_CLEARANCE); return; }
   };
 
   const handleSaveSession = (data) => {
@@ -149,6 +230,34 @@ const Physio = () => {
     }));
     alert("✅ Session saved for " + activePlayer.name);
     setView(V_DETAIL);
+  };
+
+  const approvePlan = (planId, approved) => {
+    setPendingPlans(prev => prev.map(p =>
+      p.id === planId ? { ...p, status: approved ? "Approved" : "Rejected", physioNote } : p
+    ));
+    showToast(approved ? "✅ Plan approved & trainer notified." : "Plan rejected. Trainer notified.");
+    setPhysioNote("");
+    setView(V_PENDING_PLANS);
+  };
+
+  const createClearanceAppointment = (crId) => {
+    if (!apptDate || !apptTime) { alert("Please set a date and time."); return; }
+    setClearanceRequests(prev => prev.map(cr =>
+      cr.id === crId ? { ...cr, status: "AppointmentCreated", appointment: { date: apptDate, time: apptTime } } : cr
+    ));
+    showToast("📅 Appointment created. Player, management & physio notified by email.");
+    setApptDate(""); setApptTime("");
+    setView(V_CLEARANCE);
+  };
+
+  const markReadyForPlaying = (crId) => {
+    setClearanceRequests(prev => prev.map(cr =>
+      cr.id === crId ? { ...cr, status: "ReadyForPlaying", physioNote } : cr
+    ));
+    showToast("✅ Player marked ready. Sent to Secretary for final approval.");
+    setPhysioNote("");
+    setView(V_CLEARANCE);
   };
 
   // ── SESSION FORM ──────────────────────────────────────────────────────────
@@ -161,17 +270,324 @@ const Physio = () => {
     />
   );
 
+  // ── PENDING PLANS ─────────────────────────────────────────────────────────
+  if (view === V_PENDING_PLANS) return (
+    <div style={{ padding: "28px", maxWidth: "860px", margin: "0 auto" }}>
+      <BackBtn label="Physio Dashboard" onClick={() => setView(V_PLAYERS)} />
+      <Heading title="Pending Plan Approvals" sub="Review and approve trainer workout plans for players" />
+
+      {pendingPlans.length === 0 ? (
+        <div style={card({ padding: "48px", textAlign: "center" })}>
+          <CheckCircle2 size={36} style={{ color: "#b8e6b8", margin: "0 auto 12px", display: "block" }} />
+          <p style={{ fontSize: "15px", fontWeight: "700", color: "#555" }}>No pending plan approvals</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {pendingPlans.map(plan => (
+            <div key={plan.id}
+              onClick={() => { setActivePlan(plan); setView(V_PLAN_DETAIL); }}
+              style={card({
+                padding: "18px 20px", cursor: "pointer", transition: "all 0.15s",
+                borderLeft: plan.status === "Approved" ? "4px solid #2e7d32"
+                  : plan.status === "Rejected" ? "4px solid #cc3333" : "4px solid #f9a825",
+              })}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.09)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px" }}>
+                <div>
+                  <div style={{ fontSize: "15px", fontWeight: "700", color: "#222", marginBottom: "3px" }}>{plan.planName}</div>
+                  <div style={{ fontSize: "12px", color: "#888" }}>For {plan.playerName} ({plan.playerRole}) · By {plan.trainerName} · {plan.createdAt}</div>
+                  <div style={{ fontSize: "12px", color: "#aaa", marginTop: "4px" }}>{plan.exercises.length} exercises</div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px", alignItems: "flex-end" }}>
+                  <Badge
+                    label={plan.status}
+                    bg={plan.status === "Approved" ? "#f0faf0" : plan.status === "Rejected" ? "#fff0f0" : "#fff8e1"}
+                    color={plan.status === "Approved" ? "#2e7d32" : plan.status === "Rejected" ? "#cc3333" : "#f9a825"}
+                    border={plan.status === "Approved" ? "#b8e6b8" : plan.status === "Rejected" ? "#ffc5c5" : "#ffe082"}
+                  />
+                  <ChevronRight size={15} style={{ color: "#ccc" }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── PLAN DETAIL ───────────────────────────────────────────────────────────
+  if (view === V_PLAN_DETAIL && activePlan) {
+    const plan = pendingPlans.find(p => p.id === activePlan.id) || activePlan;
+    return (
+      <div style={{ padding: "28px", maxWidth: "800px", margin: "0 auto" }}>
+        <BackBtn label="Pending Approvals" onClick={() => setView(V_PENDING_PLANS)} />
+        <Heading title={plan.planName} sub={`By ${plan.trainerName} · For ${plan.playerName} · ${plan.createdAt}`} />
+
+        <div style={card({ padding: "22px", marginBottom: "16px" })}>
+          <div style={{ fontSize: "13px", fontWeight: "700", color: "#333", marginBottom: "14px", display: "flex", alignItems: "center", gap: "7px" }}>
+            <Dumbbell size={14} style={{ color: "#e87722" }} /> Exercises ({plan.exercises.length})
+          </div>
+          {plan.exercises.map((ex, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "12px 0", borderBottom: i < plan.exercises.length - 1 ? "1px solid #f5f5f5" : "none" }}>
+              <div style={{ width: "26px", height: "26px", borderRadius: "50%", backgroundColor: "#fff3e8", border: "1.5px solid #ffd8b0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", color: "#e87722", flexShrink: 0 }}>
+                {i + 1}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "14px", fontWeight: "700", color: "#222" }}>{ex.name}</div>
+                <div style={{ fontSize: "12px", color: "#888" }}>{ex.reps} · {ex.sets} sets</div>
+              </div>
+            </div>
+          ))}
+          {plan.notes && (
+            <div style={{ marginTop: "14px", padding: "12px 14px", backgroundColor: "#f9f9f9", borderRadius: "8px", fontSize: "13px", color: "#555", border: "1px solid #f0f0f0" }}>
+              <b style={{ color: "#333" }}>Trainer Notes:</b> {plan.notes}
+            </div>
+          )}
+        </div>
+
+        {plan.status === "Pending" && (
+          <div style={card({ padding: "22px", marginBottom: "16px" })}>
+            <div style={{ fontSize: "13px", fontWeight: "700", color: "#333", marginBottom: "12px" }}>Physio Review Note</div>
+            <textarea
+              value={physioNote} onChange={e => setPhysioNote(e.target.value)}
+              placeholder="Add your review notes (optional)..." rows={3}
+              style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: "8px", fontSize: "13px", color: "#333", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", backgroundColor: "#f9f9f9", marginBottom: "14px" }}
+              onFocus={e => (e.target.style.borderColor = "#e87722")}
+              onBlur={e => (e.target.style.borderColor = "#e0e0e0")}
+            />
+            <div style={{ display: "flex", gap: "12px" }}>
+              <OBtn onClick={() => approvePlan(plan.id, true)} style={{ flex: 1, justifyContent: "center" }}>
+                <Check size={15} /> Approve Plan
+              </OBtn>
+              <button
+                onClick={() => approvePlan(plan.id, false)}
+                style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "7px", padding: "10px 20px", backgroundColor: "#fff0f0", color: "#cc3333", border: "1.5px solid #ffc5c5", borderRadius: "8px", fontSize: "13px", fontWeight: "700", cursor: "pointer" }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#ffe0e0")}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#fff0f0")}
+              >
+                <X size={15} /> Reject Plan
+              </button>
+            </div>
+          </div>
+        )}
+
+        {plan.status !== "Pending" && (
+          <div style={{ ...card({ padding: "16px 20px" }), backgroundColor: plan.status === "Approved" ? "#f0faf0" : "#fff0f0", border: `1px solid ${plan.status === "Approved" ? "#b8e6b8" : "#ffc5c5"}` }}>
+            <div style={{ fontSize: "14px", fontWeight: "700", color: plan.status === "Approved" ? "#2e7d32" : "#cc3333" }}>
+              {plan.status === "Approved" ? "✅ Plan Approved" : "❌ Plan Rejected"}
+            </div>
+            {plan.physioNote && <div style={{ fontSize: "13px", color: "#666", marginTop: "6px" }}>{plan.physioNote}</div>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── CLEARANCE REQUESTS ────────────────────────────────────────────────────
+  if (view === V_CLEARANCE) return (
+    <div style={{ padding: "28px", maxWidth: "860px", margin: "0 auto" }}>
+      <BackBtn label="Physio Dashboard" onClick={() => setView(V_PLAYERS)} />
+      <Heading title="Injury Clearance Requests" sub="Players requesting clearance to return to play" />
+
+      {clearanceRequests.length === 0 ? (
+        <div style={card({ padding: "48px", textAlign: "center" })}>
+          <Shield size={36} style={{ color: "#b8e6b8", margin: "0 auto 12px", display: "block" }} />
+          <p style={{ fontSize: "15px", fontWeight: "700", color: "#555" }}>No clearance requests</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {clearanceRequests.map(cr => (
+            <div key={cr.id}
+              onClick={() => { setActiveClearance(cr); setView(V_CLEARANCE_DETAIL); }}
+              style={card({
+                padding: "18px 20px", cursor: "pointer", transition: "all 0.15s",
+                borderLeft: cr.status === "ReadyForPlaying" ? "4px solid #2e7d32"
+                  : cr.status === "AppointmentCreated" ? "4px solid #3b82f6" : "4px solid #f9a825",
+              })}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.09)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px" }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <AlertTriangle size={14} style={{ color: "#cc3333" }} />
+                    <span style={{ fontSize: "15px", fontWeight: "700", color: "#222" }}>{cr.playerName}</span>
+                    <span style={{ fontSize: "12px", color: "#888" }}>— {cr.playerRole}</span>
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#888" }}>{cr.injuryType} · {cr.bodyPart} · Requested {cr.requestDate}</div>
+                  <div style={{ fontSize: "12px", color: "#666", marginTop: "5px", fontStyle: "italic" }}>"{cr.playerNote.substring(0, 80)}..."</div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "5px", alignItems: "flex-end" }}>
+                  <Badge
+                    label={cr.status === "AppointmentCreated" ? "Appt. Set" : cr.status === "ReadyForPlaying" ? "Ready →Secretary" : "Pending Review"}
+                    bg={cr.status === "ReadyForPlaying" ? "#f0faf0" : cr.status === "AppointmentCreated" ? "#eff6ff" : "#fff8e1"}
+                    color={cr.status === "ReadyForPlaying" ? "#2e7d32" : cr.status === "AppointmentCreated" ? "#3b82f6" : "#f9a825"}
+                    border={cr.status === "ReadyForPlaying" ? "#b8e6b8" : cr.status === "AppointmentCreated" ? "#bfdbfe" : "#ffe082"}
+                  />
+                  <ChevronRight size={15} style={{ color: "#ccc" }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── CLEARANCE DETAIL ──────────────────────────────────────────────────────
+  if (view === V_CLEARANCE_DETAIL && activeClearance) {
+    const cr = clearanceRequests.find(c => c.id === activeClearance.id) || activeClearance;
+    return (
+      <div style={{ padding: "28px", maxWidth: "800px", margin: "0 auto" }}>
+        <BackBtn label="Clearance Requests" onClick={() => setView(V_CLEARANCE)} />
+        <Heading title={`Clearance: ${cr.playerName}`} sub={`${cr.injuryType} · ${cr.bodyPart}`} />
+
+        {/* Player note */}
+        <div style={card({ padding: "20px", marginBottom: "16px" })}>
+          <div style={{ fontSize: "13px", fontWeight: "700", color: "#333", marginBottom: "8px" }}>Player's Statement</div>
+          <div style={{ fontSize: "14px", color: "#444", lineHeight: "1.6", padding: "12px 16px", backgroundColor: "#f9f9f9", borderRadius: "8px", border: "1px solid #f0f0f0", fontStyle: "italic" }}>
+            "{cr.playerNote}"
+          </div>
+          <div style={{ fontSize: "12px", color: "#aaa", marginTop: "6px" }}>Submitted {cr.requestDate}</div>
+        </div>
+
+        {/* Create appointment */}
+        {cr.status === "Pending" && (
+          <div style={card({ padding: "22px", marginBottom: "16px" })}>
+            <div style={{ fontSize: "14px", fontWeight: "700", color: "#333", marginBottom: "14px", display: "flex", alignItems: "center", gap: "7px" }}>
+              <Calendar size={15} style={{ color: "#e87722" }} /> Create Appointment for Clearance
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+              <div>
+                <label style={{ fontSize: "11px", fontWeight: "700", color: "#888", display: "block", marginBottom: "4px" }}>APPOINTMENT DATE</label>
+                <input type="date" value={apptDate} onChange={e => setApptDate(e.target.value)}
+                  style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: "7px", fontSize: "13px", color: "#333", backgroundColor: "#f9f9f9", outline: "none", boxSizing: "border-box" }}
+                  onFocus={e => (e.target.style.borderColor = "#e87722")}
+                  onBlur={e => (e.target.style.borderColor = "#e0e0e0")}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: "11px", fontWeight: "700", color: "#888", display: "block", marginBottom: "4px" }}>TIME</label>
+                <input type="time" value={apptTime} onChange={e => setApptTime(e.target.value)}
+                  style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: "7px", fontSize: "13px", color: "#333", backgroundColor: "#f9f9f9", outline: "none", boxSizing: "border-box" }}
+                  onFocus={e => (e.target.style.borderColor = "#e87722")}
+                  onBlur={e => (e.target.style.borderColor = "#e0e0e0")}
+                />
+              </div>
+            </div>
+            <OBtn onClick={() => createClearanceAppointment(cr.id)} style={{ width: "100%", justifyContent: "center" }}>
+              <Calendar size={15} /> Create Appointment for Clearance
+            </OBtn>
+            <div style={{ fontSize: "11px", color: "#aaa", marginTop: "8px", textAlign: "center" }}>📧 Player, management & physio will be notified by email.</div>
+          </div>
+        )}
+
+        {/* After appointment */}
+        {cr.status === "AppointmentCreated" && (
+          <>
+            <div style={{ ...card({ padding: "16px 20px", marginBottom: "16px", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe" }) }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Calendar size={16} style={{ color: "#3b82f6" }} />
+                <span style={{ fontSize: "14px", fontWeight: "700", color: "#1d4ed8" }}>Appointment Scheduled</span>
+              </div>
+              <div style={{ fontSize: "13px", color: "#3b82f6", marginTop: "4px" }}>{cr.appointment?.date} at {cr.appointment?.time}</div>
+              <div style={{ fontSize: "11px", color: "#60a5fa", marginTop: "2px" }}>📧 Notifications sent to player, management & physio.</div>
+            </div>
+
+            <div style={card({ padding: "22px" })}>
+              <div style={{ fontSize: "14px", fontWeight: "700", color: "#333", marginBottom: "12px" }}>After Assessment — Mark Player Ready</div>
+              <textarea
+                value={physioNote} onChange={e => setPhysioNote(e.target.value)}
+                placeholder="Clinical notes for clearance decision..." rows={3}
+                style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: "8px", fontSize: "13px", color: "#333", outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", backgroundColor: "#f9f9f9", marginBottom: "12px" }}
+                onFocus={e => (e.target.style.borderColor = "#e87722")}
+                onBlur={e => (e.target.style.borderColor = "#e0e0e0")}
+              />
+              <OBtn onClick={() => markReadyForPlaying(cr.id)} style={{ width: "100%", justifyContent: "center", backgroundColor: "#2e7d32" }}>
+                <CheckCircle2 size={15} /> Player Ready for Playing — Send to Secretary
+              </OBtn>
+              <div style={{ fontSize: "11px", color: "#aaa", marginTop: "8px", textAlign: "center" }}>This will be forwarded to the Secretary for final approval.</div>
+            </div>
+          </>
+        )}
+
+        {cr.status === "ReadyForPlaying" && (
+          <div style={{ ...card({ padding: "18px 20px", backgroundColor: "#f0faf0", border: "1px solid #b8e6b8", borderLeft: "4px solid #2e7d32" }) }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <CheckCircle2 size={18} style={{ color: "#2e7d32" }} />
+              <span style={{ fontSize: "15px", fontWeight: "700", color: "#2e7d32" }}>Sent to Secretary for Final Approval</span>
+            </div>
+            <div style={{ fontSize: "12px", color: "#4caf50", marginTop: "4px" }}>Awaiting Secretary sign-off. All parties will be notified.</div>
+            {cr.physioNote && <div style={{ fontSize: "13px", color: "#555", marginTop: "8px", fontStyle: "italic" }}>"{cr.physioNote}"</div>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // ── PLAYER LIST ───────────────────────────────────────────────────────────
   if (view === V_PLAYERS) return (
     <div style={{ padding: "28px", maxWidth: "1000px", margin: "0 auto" }}>
       <Heading title="Physio Dashboard" sub="All players under your supervision" />
 
+      {/* Alert cards — pending plan approvals & clearance requests */}
+      {(pendingPlanCount > 0 || pendingClearanceCount > 0) && (
+        <div style={{ display: "flex", gap: "14px", marginBottom: "20px", flexWrap: "wrap" }}>
+          {pendingPlanCount > 0 && (
+            <div
+              onClick={() => setView(V_PENDING_PLANS)}
+              style={{ ...card({ padding: "14px 18px", cursor: "pointer", borderLeft: "4px solid #f9a825", flex: 1, minWidth: "220px", transition: "all 0.15s" }) }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.1)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                  <div style={{ width: "34px", height: "34px", borderRadius: "9px", backgroundColor: "#fff8e1", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <ClipboardCheck size={17} style={{ color: "#f9a825" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "18px", fontWeight: "800", color: "#f9a825" }}>{pendingPlanCount}</div>
+                    <div style={{ fontSize: "12px", color: "#888" }}>Pending Plan Approvals</div>
+                  </div>
+                </div>
+                <ChevronRight size={14} style={{ color: "#ccc" }} />
+              </div>
+            </div>
+          )}
+
+          {pendingClearanceCount > 0 && (
+            <div
+              onClick={() => setView(V_CLEARANCE)}
+              style={{ ...card({ padding: "14px 18px", cursor: "pointer", borderLeft: "4px solid #cc3333", flex: 1, minWidth: "220px", transition: "all 0.15s" }) }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.1)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                  <div style={{ width: "34px", height: "34px", borderRadius: "9px", backgroundColor: "#fff0f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Shield size={17} style={{ color: "#cc3333" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "18px", fontWeight: "800", color: "#cc3333" }}>{pendingClearanceCount}</div>
+                    <div style={{ fontSize: "12px", color: "#888" }}>Injury Clearance Requests</div>
+                  </div>
+                </div>
+                <ChevronRight size={14} style={{ color: "#ccc" }} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Summary stats */}
       <div style={{ display: "flex", gap: "14px", marginBottom: "22px", flexWrap: "wrap" }}>
         {[
-          { label: "Total Players",   value: players.length,                                                          color: "#e87722" },
+          { label: "Total Players",   value: players.length,                                                               color: "#e87722" },
           { label: "Reports Today",   value: players.filter((p) => p.reports.some((r) => r.date === "2025-05-01")).length, color: "#2e7d32" },
-          { label: "Injured Players", value: players.filter(hasInjury).length,                                         color: "#cc3333" },
-          { label: "No Report Today", value: players.filter((p) => !p.reports.some((r) => r.date === "2025-05-01")).length, color: "#888" },
+          { label: "Injured Players", value: players.filter(hasInjury).length,                                             color: "#cc3333" },
+          { label: "No Report Today", value: players.filter((p) => !p.reports.some((r) => r.date === "2025-05-01")).length,color: "#888"    },
         ].map((s) => (
           <div key={s.label} style={{ ...card({ padding: "14px 20px", minWidth: "150px", borderLeft: `4px solid ${s.color}` }) }}>
             <span style={{ fontSize: "22px", fontWeight: "800", color: s.color, display: "block" }}>{s.value}</span>
@@ -180,6 +596,7 @@ const Physio = () => {
         ))}
       </div>
 
+      {/* Player list */}
       <div style={card({ overflow: "hidden" })}>
         <div style={{ padding: "14px 22px", borderBottom: "1px solid #f0f0f0", display: "flex", alignItems: "center", gap: "8px" }}>
           <User size={15} style={{ color: "#e87722" }} />
@@ -242,6 +659,13 @@ const Physio = () => {
           );
         })}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: "fixed", bottom: "28px", right: "28px", backgroundColor: "#2e7d32", color: "#fff", padding: "12px 20px", borderRadius: "10px", fontSize: "13px", fontWeight: "600", boxShadow: "0 4px 14px rgba(0,0,0,0.2)", zIndex: 999 }}>
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 
@@ -286,8 +710,8 @@ const Physio = () => {
           {[...activePlayer.reports]
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .map((report, i, arr) => {
-              const high   = report.soreness >= 7 || report.fatigue >= 7;
-              const rowBg  = report.injury ? "#fff8f8" : "transparent";
+              const high  = report.soreness >= 7 || report.fatigue >= 7;
+              const rowBg = report.injury ? "#fff8f8" : "transparent";
               return (
                 <div key={report.id} onClick={() => openReport(report)}
                   style={{
@@ -373,12 +797,12 @@ const Physio = () => {
         {/* Metrics grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(155px, 1fr))", gap: "12px", marginBottom: "20px" }}>
           {[
-            { icon: Activity, label: "Soreness",    value: <ScorePill value={r.soreness} /> },
-            { icon: Zap,      label: "Fatigue",     value: <ScorePill value={r.fatigue} /> },
-            { icon: Moon,     label: "Sleep",       value: <span style={{ fontSize: "13px", fontWeight: "700", color: "#222" }}>{r.sleep}h</span> },
-            { icon: Heart,    label: "Motivation",  value: <ScorePill value={r.motivation} /> },
-            { icon: Activity, label: "RPE",         value: <ScorePill value={r.rpe} /> },
-            { icon: Target,   label: "Balls Bowled",value: <span style={{ fontSize: "13px", fontWeight: "700", color: "#222" }}>{r.ballsBowled}</span> },
+            { icon: Activity, label: "Soreness",     value: <ScorePill value={r.soreness} /> },
+            { icon: Zap,      label: "Fatigue",      value: <ScorePill value={r.fatigue} /> },
+            { icon: Moon,     label: "Sleep",        value: <span style={{ fontSize: "13px", fontWeight: "700", color: "#222" }}>{r.sleep}h</span> },
+            { icon: Heart,    label: "Motivation",   value: <ScorePill value={r.motivation} /> },
+            { icon: Activity, label: "RPE",          value: <ScorePill value={r.rpe} /> },
+            { icon: Target,   label: "Balls Bowled", value: <span style={{ fontSize: "13px", fontWeight: "700", color: "#222" }}>{r.ballsBowled}</span> },
           ].map((m) => (
             <div key={m.label} style={card({ padding: "14px 16px" })}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
@@ -392,8 +816,8 @@ const Physio = () => {
 
         {/* Detail rows */}
         <div style={{ ...card({ padding: "6px 22px 4px", marginBottom: "20px" }) }}>
-          <DetailRow icon={Calendar}     label="Date"             value={formatDate(r.date)} />
-          <DetailRow icon={Clock}        label="Submitted At"     value={r.time} />
+          <DetailRow icon={Calendar}     label="Date"              value={formatDate(r.date)} />
+          <DetailRow icon={Clock}        label="Submitted At"      value={r.time} />
           <DetailRow icon={Activity}     label="Urine Colour"
             value={
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
