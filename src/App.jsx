@@ -8,7 +8,7 @@ import Physio from './pages/Physio'
 import TrainerDashboard from './pages/TrainerDashboard'
 import NutritionDashboard from './pages/NutritionDashboard'
 import Login from './pages/Login'
-import SinglePlayer from './pages/SinglePlayer'
+import SinglePlayer from '../src/pages/singlePlayer'
 
 const USERS = {
   "assiscatetest@gmail.com": "admin",
