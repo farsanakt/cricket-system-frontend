@@ -912,7 +912,7 @@ const Physio = () => {
         )}
 
         {/* Create Session CTA — only for injured reports */}
-        {r.injury && !session && (
+        {/* {r.injury && !session && (
           <div style={{ ...card({ padding: "20px 22px", borderLeft: "4px solid #cc3333" }) }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -952,7 +952,7 @@ const Physio = () => {
               </button>
             </div>
           </div>
-        )}
+        )} */}
       </div>
     );
   }
