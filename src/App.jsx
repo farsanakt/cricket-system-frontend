@@ -10,7 +10,7 @@ import Physio from './pages/Physio'
 import TrainerDashboard from './pages/TrainerDashboard'
 import NutritionDashboard from './pages/NutritionDashboard'
 import CoachDashboard from './pages/CoachDashboard'
-import SinglePlayer from './pages/SinglePlayer'
+import SinglePlayer from './pages/singlePlayer'
 import Login from './pages/Login'
 
 // 🔥 PHYSIO SUB PAGES
