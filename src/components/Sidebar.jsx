@@ -8,6 +8,10 @@ import {
   BarChart2,
   ChevronDown,
   ChevronUp,
+  Shield,
+  ClipboardList,
+  Dumbbell,
+  FileText,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -17,36 +21,83 @@ const NAV_ITEMS = [
     icon: LayoutDashboard,
     path: '/',
   },
+
   {
     id: 'players',
     label: 'Players',
     icon: Users,
     path: '/players',
   },
+
   {
     id: 'daily-report',
     label: 'Daily Report',
     icon: BookOpen,
     path: '/report-form',
   },
+
+  // 🔥 PHYSIO SECTION
   {
     id: 'physio',
     label: 'Physio',
     icon: Activity,
+
+    // ✅ MAIN PHYSIO DASHBOARD
     path: '/physio',
+
+    // ✅ MINI SIDEBAR ITEMS
+    children: [
+      {
+        id: 'physio-consultation',
+        label: 'Consultation',
+        icon: ClipboardList,
+        path: '/consultation',
+      },
+
+      {
+        id: 'physio-rehab',
+        label: 'Rehab Program',
+        icon: Dumbbell,
+        path: '/rehab',
+      },
+
+      {
+        id: 'physio-assessment',
+        label: 'Assessment',
+        icon: Activity,
+        path: '/physio/assessment',
+      },
+
+      {
+        id: 'physio-reports',
+        label: 'Reports',
+        icon: FileText,
+        path: '/physio/reports',
+      },
+    ],
   },
+
   {
     id: 'nutrition',
     label: 'Nutrition',
     icon: BookOpen,
     path: '/nutrition',
   },
+
+  {
+    id: 'coach',
+    label: 'Coach',
+    icon: Shield,
+    path: '/coach',
+  },
+
   {
     id: 'trainer',
     label: 'Trainer',
     icon: UserCog,
     path: '/trainer',
   },
+
   {
     id: 'reports',
     label: 'Reports',
@@ -55,11 +106,20 @@ const NAV_ITEMS = [
   },
 ]
 
-export default function Sidebar({ activePath, onNavigate, role }) {
-  const [expanded, setExpanded] = useState({})
+export default function Sidebar({
+  activePath,
+  onNavigate,
+  role,
+}) {
+  const [expanded, setExpanded] = useState({
+    physio: true,
+  })
 
   const toggle = (id) => {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
+    setExpanded((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }))
   }
 
   const isActive = (path) => activePath === path
@@ -67,12 +127,26 @@ export default function Sidebar({ activePath, onNavigate, role }) {
   const isGroupActive = (item) =>
     item.children?.some((c) => activePath === c.path)
 
-  // 🔥 ROLE-BASED FILTER
+  // 🔥 ROLE FILTER
   const filteredItems = NAV_ITEMS.filter((item) => {
     if (role === 'admin') return true
-    if (role === 'trainer') return item.path === '/trainer'
-    if (role === 'physio') return item.path === '/physio'
-    if (role === 'nutrition') return item.path === '/nutrition'
+
+    if (role === 'trainer') {
+      return item.path === '/trainer'
+    }
+
+    if (role === 'physio') {
+      return item.id === 'physio'
+    }
+
+    if (role === 'nutrition') {
+      return item.path === '/nutrition'
+    }
+
+    if (role === 'coach') {
+      return item.path === '/coach'
+    }
+
     return false
   })
 
@@ -89,7 +163,7 @@ export default function Sidebar({ activePath, onNavigate, role }) {
         userSelect: 'none',
       }}
     >
-      {/* Logo */}
+      {/* 🔥 LOGO */}
       <div
         style={{
           padding: '22px 28px 18px 28px',
@@ -109,7 +183,7 @@ export default function Sidebar({ activePath, onNavigate, role }) {
         </span>
       </div>
 
-      {/* Nav */}
+      {/* 🔥 NAVIGATION */}
       <nav
         style={{
           flex: 1,
@@ -121,30 +195,42 @@ export default function Sidebar({ activePath, onNavigate, role }) {
           const Icon = item.icon
           const hasChildren = !!item.children
           const isOpen = expanded[item.id]
+
           const groupActive = isGroupActive(item)
           const itemActive = !hasChildren && isActive(item.path)
 
           return (
             <div key={item.id}>
-              {/* Top-level item */}
+              {/* 🔥 MAIN ITEM */}
               <div
                 onClick={() => {
-                  if (hasChildren) toggle(item.id)
-                  else onNavigate(item.path)
+                  if (hasChildren) {
+                    toggle(item.id)
+
+                    // ✅ OPEN MAIN PAGE ALSO
+                    if (item.path) {
+                      onNavigate(item.path)
+                    }
+                  } else {
+                    onNavigate(item.path)
+                  }
                 }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   padding: '10px 20px 10px 24px',
                   cursor: 'pointer',
+
                   backgroundColor:
                     itemActive || (groupActive && isOpen)
                       ? '#ffffff'
                       : 'transparent',
+
                   borderLeft:
                     groupActive || itemActive
                       ? '3px solid #e87722'
                       : '3px solid transparent',
+
                   transition: 'background 0.15s',
                   gap: '10px',
                 }}
@@ -155,7 +241,8 @@ export default function Sidebar({ activePath, onNavigate, role }) {
                 }}
                 onMouseLeave={(e) => {
                   if (!itemActive && !(groupActive && isOpen)) {
-                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.backgroundColor =
+                      'transparent'
                   }
                 }}
               >
@@ -163,7 +250,10 @@ export default function Sidebar({ activePath, onNavigate, role }) {
                   size={18}
                   style={{
                     color:
-                      groupActive || itemActive ? '#e87722' : '#777777',
+                      groupActive || itemActive
+                        ? '#e87722'
+                        : '#777777',
+
                     flexShrink: 0,
                   }}
                 />
@@ -172,10 +262,16 @@ export default function Sidebar({ activePath, onNavigate, role }) {
                   style={{
                     flex: 1,
                     fontSize: '14px',
+
                     fontWeight:
-                      groupActive || itemActive ? '600' : '400',
+                      groupActive || itemActive
+                        ? '600'
+                        : '400',
+
                     color:
-                      groupActive || itemActive ? '#e87722' : '#555555',
+                      groupActive || itemActive
+                        ? '#e87722'
+                        : '#555555',
                   }}
                 >
                   {item.label}
@@ -183,17 +279,29 @@ export default function Sidebar({ activePath, onNavigate, role }) {
 
                 {hasChildren &&
                   (isOpen ? (
-                    <ChevronUp size={14} style={{ color: '#e87722' }} />
+                    <ChevronUp
+                      size={14}
+                      style={{ color: '#e87722' }}
+                    />
                   ) : (
-                    <ChevronDown size={14} style={{ color: '#888888' }} />
+                    <ChevronDown
+                      size={14}
+                      style={{ color: '#888888' }}
+                    />
                   ))}
               </div>
 
-              {/* Children (future use) */}
+              {/* 🔥 CHILD ITEMS */}
               {hasChildren && isOpen && (
-                <div style={{ backgroundColor: '#e0e0e0' }}>
+                <div
+                  style={{
+                    backgroundColor: '#e0e0e0',
+                  }}
+                >
                   {item.children.map((child) => {
+                    const ChildIcon = child.icon
                     const childActive = isActive(child.path)
+
                     return (
                       <div
                         key={child.id}
@@ -201,21 +309,41 @@ export default function Sidebar({ activePath, onNavigate, role }) {
                         style={{
                           display: 'flex',
                           alignItems: 'center',
+                          gap: '10px',
+
                           padding: '9px 20px 9px 54px',
+
                           cursor: 'pointer',
+
                           backgroundColor: childActive
                             ? '#ffffff'
                             : 'transparent',
+
                           borderLeft: childActive
                             ? '3px solid #e87722'
                             : '3px solid transparent',
                         }}
                       >
+                        <ChildIcon
+                          size={15}
+                          style={{
+                            color: childActive
+                              ? '#e87722'
+                              : '#777777',
+                          }}
+                        />
+
                         <span
                           style={{
                             fontSize: '13.5px',
-                            fontWeight: childActive ? '600' : '400',
-                            color: childActive ? '#e87722' : '#555555',
+
+                            fontWeight:
+                              childActive ? '600' : '400',
+
+                            color:
+                              childActive
+                                ? '#e87722'
+                                : '#555555',
                           }}
                         >
                           {child.label}
@@ -230,11 +358,12 @@ export default function Sidebar({ activePath, onNavigate, role }) {
         })}
       </nav>
 
-      {/* Footer */}
+      {/* 🔥 FOOTER */}
       <div
         style={{
           padding: '14px 24px',
           borderTop: '1px solid #d0d0d0',
+
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
@@ -245,23 +374,40 @@ export default function Sidebar({ activePath, onNavigate, role }) {
             width: '32px',
             height: '32px',
             borderRadius: '50%',
+
             backgroundColor: '#e87722',
+
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+
             color: 'white',
             fontSize: '14px',
             fontWeight: '700',
           }}
         >
-          A
+          {role?.charAt(0)?.toUpperCase() || 'A'}
         </div>
+
         <div>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>
-            Admin
+          <div
+            style={{
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#333',
+              textTransform: 'capitalize',
+            }}
+          >
+            {role || 'Admin'}
           </div>
-          <div style={{ fontSize: '11px', color: '#888' }}>
-            admin@cricket.com
+
+          <div
+            style={{
+              fontSize: '11px',
+              color: '#888',
+            }}
+          >
+            cricket@system.com
           </div>
         </div>
       </div>

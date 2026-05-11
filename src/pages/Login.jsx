@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { loginUser } from "../api/authApi"
 
 export default function Login({ onLogin }) {
   const [email, setEmail]       = useState('')
@@ -22,24 +23,35 @@ export default function Login({ onLogin }) {
     return e
   }
 
-  const handleSubmit = () => {
-    const errs = validate()
-    setErrors(errs)
+const handleSubmit = async () => {
+  const errs = validate()
+  setErrors(errs)
 
-    if (Object.keys(errs).length) return
+  if (Object.keys(errs).length) return
 
-    setLoading(true)
+  setLoading(true)
 
-    setTimeout(() => {
-      setLoading(false)
-      setSuccess(true)
+  try {
+    const data = await loginUser({ email, password })
+    // ✅ STORE DATA
+localStorage.setItem("token", data.token)
+localStorage.setItem("userId", data.id)
+localStorage.setItem("role", data.role)
 
-      // 🔥 IMPORTANT: call parent login
-      onLogin(email, password)
+    console.log("Login Success:", data)
 
-    }, 1200)
+    setSuccess(true)
+
+    // 🔥 send FULL data to App
+    onLogin(data)
+
+  } catch (err) {
+    console.error(err)
+    alert(err.message || "Login failed")
+  } finally {
+    setLoading(false)
   }
-
+}
   const inputStyle = (focused, hasErr) => ({
     width: '100%',
     padding: '11px 12px 11px 38px',

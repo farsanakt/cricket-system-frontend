@@ -1,5 +1,6 @@
 import { useState } from "react";
-import PhysioSessionForm from "../components/PhysioSessionForm";
+import PhysioSessionForm from "./PhysioSessionForm";
+import PlayerMedicalRecord from "./PlayerMedicalRecord";
 import {
   User, AlertTriangle, ArrowLeft, ChevronRight,
   Calendar, Clock, Activity, Moon, Zap, Heart,
@@ -17,6 +18,7 @@ const ALL_EXERCISES_LOOKUP = [
   { id: 13, name: "Lunges" },            { id: 14, name: "Push-ups Wide" },
   { id: 15, name: "Dead Hangs" },        { id: 16, name: "Foam Roll IT Band" },
 ];
+
 
 const URINE_COLOURS = [
   { label: "Pale Straw",         hex: "#f5e97a" },
@@ -105,6 +107,7 @@ const V_PENDING_PLANS    = "pending_plans";
 const V_PLAN_DETAIL      = "plan_detail";
 const V_CLEARANCE        = "clearance";
 const V_CLEARANCE_DETAIL = "clearance_detail";
+const V_MEDICAL_RECORD   = "medical_record";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const card = (extra = {}) => ({
@@ -217,6 +220,7 @@ const Physio = () => {
 
   const goBack = () => {
     if (view === V_SESSION)          { setView(V_DETAIL);   return; }
+    if (view === V_MEDICAL_RECORD)   { setView(V_DETAIL);   return; }
     if (view === V_DETAIL)           { setView(V_REPORTS);  setActiveReport(null); return; }
     if (view === V_REPORTS)          { setView(V_PLAYERS);  setActivePlayer(null); return; }
     if (view === V_PLAN_DETAIL)      { setView(V_PENDING_PLANS); return; }
@@ -231,6 +235,8 @@ const Physio = () => {
     alert("✅ Session saved for " + activePlayer.name);
     setView(V_DETAIL);
   };
+
+
 
   const approvePlan = (planId, approved) => {
     setPendingPlans(prev => prev.map(p =>
@@ -261,12 +267,21 @@ const Physio = () => {
   };
 
   // ── SESSION FORM ──────────────────────────────────────────────────────────
-  if (view === V_SESSION) return (
+  if (view === V_SESSION && activePlayer && activeReport) return (
     <PhysioSessionForm
       player={activePlayer}
       report={activeReport}
       onBack={goBack}
       onSave={handleSaveSession}
+    />
+  );
+
+  // ── MEDICAL RECORD ─────────────────────────────────────────────────────────
+  if (view === V_MEDICAL_RECORD && activePlayer && activeReport) return (
+    <PlayerMedicalRecord
+      player={activePlayer}
+      report={activeReport}
+      onBack={goBack}
     />
   );
 
@@ -446,7 +461,7 @@ const Physio = () => {
 
         {/* Player note */}
         <div style={card({ padding: "20px", marginBottom: "16px" })}>
-          <div style={{ fontSize: "13px", fontWeight: "700", color: "#333", marginBottom: "8px" }}>Player's Statement</div>
+          <div style={{ fontSize: "13px", fontWeight: "700", color: "#333", marginBottom: "8px" }}>Player&apos;s Statement</div>
           <div style={{ fontSize: "14px", color: "#444", lineHeight: "1.6", padding: "12px 16px", backgroundColor: "#f9f9f9", borderRadius: "8px", border: "1px solid #f0f0f0", fontStyle: "italic" }}>
             "{cr.playerNote}"
           </div>
@@ -654,6 +669,7 @@ const Physio = () => {
                   <div style={{ fontSize: "11px", color: "#bbb" }}>No reports yet</div>
                 )}
               </div>
+
               <ChevronRight size={16} style={{ color: "#ccc", flexShrink: 0 }} />
             </div>
           );
@@ -775,7 +791,7 @@ const Physio = () => {
 
     return (
       <div style={{ padding: "28px", maxWidth: "860px", margin: "0 auto" }}>
-        <BackBtn label={`${activePlayer.name}'s Reports`} onClick={goBack} />
+        <BackBtn label={`${activePlayer.name}&apos;s Reports`} onClick={goBack} />
 
         {/* Report header */}
         <div style={{ ...card({ padding: "18px 22px", marginBottom: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }) }}>
@@ -788,9 +804,36 @@ const Physio = () => {
               <div style={{ fontSize: "12px", color: "#888" }}>{formatDate(r.date)} · {r.time} · {activePlayer.name}</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {r.injury    && <Badge label="⚠ Injury Reported" bg="#fff0f0" color="#cc3333" border="#ffc5c5" />}
-            {r.achesPain && !r.injury && <Badge label="Aches / Pain" bg="#fff8e1" color="#f9a825" border="#ffe082" />}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {r.injury    && <Badge label="⚠ Injury Reported" bg="#fff0f0" color="#cc3333" border="#ffc5c5" />}
+              {r.achesPain && !r.injury && <Badge label="Aches / Pain" bg="#fff8e1" color="#f9a825" border="#ffe082" />}
+            </div>
+            <button
+              onClick={() => setView(V_MEDICAL_RECORD)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "36px",
+                height: "36px",
+                borderRadius: "8px",
+                backgroundColor: "#e87722",
+                color: "#fff",
+                border: "none",
+                fontSize: "18px",
+                fontWeight: "700",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(232,119,34,0.28)",
+                flexShrink: 0,
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#d06a18")}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#e87722")}
+              title="Add Medical Record"
+            >
+              +
+            </button>
           </div>
         </div>
 
@@ -869,7 +912,7 @@ const Physio = () => {
         )}
 
         {/* Create Session CTA — only for injured reports */}
-        {r.injury && (
+        {r.injury && !session && (
           <div style={{ ...card({ padding: "20px 22px", borderLeft: "4px solid #cc3333" }) }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -882,18 +925,30 @@ const Physio = () => {
                 </div>
               </div>
               <button
-                onClick={() => setView(V_SESSION)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: "8px",
-                  padding: "10px 22px", backgroundColor: "#e87722",
-                  color: "#fff", border: "none", borderRadius: "8px",
-                  fontSize: "13px", fontWeight: "700", cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(232,119,34,0.3)", flexShrink: 0,
+                onClick={() => {
+                  setView(V_SESSION);
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#d06a18")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#e87722")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px 22px",
+                  backgroundColor: "#e87722",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(232,119,34,0.3)",
+                  flexShrink: 0,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#d06a18")}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#e87722")}
               >
-                <Plus size={15} /> Create Session
+                <Plus size={15} />
+                Create Session
               </button>
             </div>
           </div>

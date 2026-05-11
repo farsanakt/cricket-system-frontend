@@ -1,4 +1,6 @@
-import { useState } from 'react'
+
+import { useState, useEffect } from 'react'
+
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 
@@ -7,54 +9,106 @@ import Players from './pages/Players'
 import Physio from './pages/Physio'
 import TrainerDashboard from './pages/TrainerDashboard'
 import NutritionDashboard from './pages/NutritionDashboard'
-import Login from './pages/Login'
+import CoachDashboard from './pages/CoachDashboard'
 import SinglePlayer from './pages/SinglePlayer'
+import Login from './pages/Login'
 
-const USERS = {
-  "assiscatetest@gmail.com": "admin",
-  "trainer@gmail.com": "trainer",
-  "physio@gmail.com": "physio",
-  "player@gmail.com": "player",
-  "nutrition@gmail.com": "nutrition",
-}
+// 🔥 PHYSIO SUB PAGES
+import Consultation from './components/PhysioSessionForm'
+import RehabProgram from './pages/RehabProgram'
+// import Assessment from './pages/Assessment'
+// import PhysioReports from './pages/PhysioReports'
 
 export default function App() {
   const [activePath, setActivePath] = useState('/login')
   const [role, setRole] = useState(null)
 
-  // 🔥 LOGIN
-  const handleLogin = (email, password) => {
-    const userRole = USERS[email]
+  // 🔥 AUTO LOGIN AFTER REFRESH
+  useEffect(() => {
+    const savedRole = localStorage.getItem('role')
 
-    if (userRole && password === "1234") {
-      setRole(userRole)
+    if (savedRole) {
+      setRole(savedRole)
 
-      switch (userRole) {
+      switch (savedRole) {
         case 'admin':
           setActivePath('/')
           break
+
         case 'trainer':
           setActivePath('/trainer')
           break
+
         case 'physio':
           setActivePath('/physio')
           break
+
         case 'nutrition':
           setActivePath('/nutrition')
           break
+
+        case 'coach':
+          setActivePath('/coach')
+          break
+
         case 'player':
           setActivePath('/single-player')
           break
+
         default:
-          setActivePath('/')
+          setActivePath('/login')
       }
-    } else {
-      alert("Invalid login")
+    }
+  }, [])
+
+  // 🔥 LOGIN HANDLER
+  const handleLogin = (data) => {
+    const { role, token, id } = data
+
+    // ✅ SAVE AUTH DATA
+    localStorage.setItem('token', token)
+    localStorage.setItem('role', role)
+    localStorage.setItem('userId', id)
+
+    setRole(role)
+
+    // ✅ REDIRECT BASED ON ROLE
+    switch (role) {
+      case 'admin':
+        setActivePath('/')
+        break
+
+      case 'trainer':
+        setActivePath('/trainer')
+        break
+
+      case 'physio':
+        setActivePath('/physio')
+        break
+
+      case 'nutrition':
+        setActivePath('/nutrition')
+        break
+
+      case 'coach':
+        setActivePath('/coach')
+        break
+
+      case 'player':
+        setActivePath('/single-player')
+        break
+
+      default:
+        setActivePath('/')
     }
   }
 
   // 🔥 LOGOUT
   const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('userId')
+
     setRole(null)
     setActivePath('/login')
   }
@@ -64,20 +118,85 @@ export default function App() {
     switch (activePath) {
       case '/':
         return <Dashboard />
+
       case '/players':
         return <Players />
+
+      // 🔥 MAIN PHYSIO DASHBOARD
       case '/physio':
         return <Physio />
+
+      // // 🔥 PHYSIO SUB ROUTES
+      case '/consultation':
+        return <Consultation />
+
+      case '/rehab':
+        return <RehabProgram />
+
+      // case '/physio/assessment':
+      //   return <Assessment />
+
+      // case '/physio/reports':
+      //   return <PhysioReports />
+
       case '/trainer':
         return <TrainerDashboard />
+
       case '/nutrition':
         return <NutritionDashboard />
+
+      case '/coach':
+        return <CoachDashboard />
+
       case '/single-player':
         return <SinglePlayer />
+
       case '/login':
         return <Login onLogin={handleLogin} />
+
       default:
-        return <div>Page</div>
+        return <div>Page Not Found</div>
+    }
+  }
+
+  // 🔥 PAGE TITLES
+  const getTitle = () => {
+    switch (activePath) {
+      case '/':
+        return 'Dashboard'
+
+      case '/players':
+        return 'Players'
+
+      case '/physio':
+        return 'Physio Dashboard'
+
+      case 'consultation':
+        return 'Consultation'
+
+      case '/rehab':
+        return 'Rehab Program'
+
+      // case '/physio/assessment':
+      //   return 'Assessment'
+
+      // case '/physio/reports':
+      //   return 'Physio Reports'
+
+      case '/trainer':
+        return 'Trainer Dashboard'
+
+      case '/nutrition':
+        return 'Nutrition Dashboard'
+
+      case '/coach':
+        return 'Coach Dashboard'
+
+      case '/single-player':
+        return 'Player Dashboard'
+
+      default:
+        return 'Cricket System'
     }
   }
 
@@ -85,9 +204,14 @@ export default function App() {
   const isPlayer = role === 'player'
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-
-      {/* Sidebar */}
+    <div
+      style={{
+        display: 'flex',
+        height: '100vh',
+        backgroundColor: '#f4f4f4',
+      }}
+    >
+      {/* 🔥 SIDEBAR */}
       {!isLogin && !isPlayer && (
         <Sidebar
           activePath={activePath}
@@ -96,17 +220,33 @@ export default function App() {
         />
       )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-
-        {/* Header */}
+      {/* 🔥 MAIN CONTENT */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {/* 🔥 HEADER */}
         {!isLogin && (
-          <Header title={activePath} onLogout={handleLogout} />
+          <Header
+            title={getTitle()}
+            onLogout={handleLogout}
+          />
         )}
 
-        <main style={{ flex: 1 }}>
+        {/* 🔥 PAGE CONTENT */}
+        <main
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            backgroundColor: '#f4f4f4',
+          }}
+        >
           {renderPage()}
         </main>
-
       </div>
     </div>
   )

@@ -619,11 +619,11 @@ const PhysioSessionForm = ({ player, report, onBack, onSave }) => {
 
       {/* ── SESSION ACTION ── */}
       <div style={cardStyle}>
-        <SectionHeader title="Session Action" />
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: sessionAction === "workout" ? "20px" : "0" }}>
+        {/* <SectionHeader title="Session Action" /> */}
+        {/* <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: sessionAction === "workout" ? "20px" : "0" }}>
           <RadioOpt label="Refer to Doctor"  value="refer"   current={sessionAction} onChange={setSessionAction} desc="Forward to medical team" />
           <RadioOpt label="Plan Workout"     value="workout" current={sessionAction} onChange={setSessionAction} desc="Assign a recovery exercise plan" />
-        </div>
+        </div> */}
 
         {sessionAction === "workout" && (
           <div style={{
@@ -671,7 +671,7 @@ const PhysioSessionForm = ({ player, report, onBack, onSave }) => {
           <ArrowLeft size={15} /> Cancel
         </button>
 
-        <button
+        {/* <button
           onClick={() => { setSessionAction("refer"); setTimeout(handleSave, 50); }}
           style={{
             display: "inline-flex", alignItems: "center", gap: "7px",
@@ -683,7 +683,7 @@ const PhysioSessionForm = ({ player, report, onBack, onSave }) => {
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#fff0f0")}
         >
           <Send size={15} /> Refer to Doctor
-        </button>
+        </button> */}
 
         <button
           onClick={handleSave}
