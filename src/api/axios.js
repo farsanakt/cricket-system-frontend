@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const API = axios.create({
-  baseURL: "https://cricket-backend-chwe.onrender.com",
+  baseURL: "https://cricket-backend-chwe.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },
