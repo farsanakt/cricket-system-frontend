@@ -34,6 +34,8 @@ const EXERCISE_DB = [
   { id:15, name:"Percussion Gun Shoulder",                  cat:"Recovery",    joint:"Shoulder",  muscle:"All",              equip:"Device",  pos:"Sitting",    emoji:"💆", desc:"Apply a percussion massager to the shoulder girdle muscles to promote blood flow and reduce muscle tension." },
 ];
 
+console.log('jjjj')
+
 const CATS   = ["All","Mobility","Strength","Stability","Flexibility","Cardio","Recovery"];
 const JOINTS = ["All","Shoulder","Hip","Knee","Ankle","Spine","Full Body"];
 const MUSCS  = ["All","Deltoid","Rotator Cuff","Trapezius","Gluteus Medius","Glutes","Quadriceps","Hamstrings","Core","Gastrocnemius","Latissimus Dorsi","Posterior Deltoid"];
