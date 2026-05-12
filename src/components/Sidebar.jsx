@@ -19,6 +19,12 @@ import {
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { id: 'players', label: 'Players', icon: Users, path: '/players' },
+   {
+    id: 'exercises',
+    label: 'Exercises',
+    icon: Dumbbell,
+    path: '/exercises',
+  },
   { id: 'daily-report', label: 'Daily Report', icon: BookOpen, path: '/report-form' },
   {
     id: 'physio',

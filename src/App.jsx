@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
+import ExerciseManager from './pages/ExerciseManager'
 
 import Dashboard from './pages/Dashboard'
 import Players from './pages/Players'
@@ -132,6 +133,8 @@ export default function App() {
 
       case '/rehab':
         return <RehabProgram />
+        case '/exercises':
+  return <ExerciseManager />
 
       // case '/physio/assessment':
       //   return <Assessment />
@@ -173,6 +176,10 @@ export default function App() {
 
       case 'consultation':
         return 'Consultation'
+
+
+        case '/exercises':
+  return 'Exercises'
 
       case '/rehab':
         return 'Rehab Program'

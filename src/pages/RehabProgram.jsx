@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Search, Filter, X, Plus, Minus, Save,
   ChevronRight, ChevronDown, ChevronUp,
@@ -6,6 +6,9 @@ import {
   Download, Edit2, ArrowLeft, Heart,
   Dumbbell, RotateCcw, Play, Image as ImgIcon,
 } from "lucide-react";
+
+// Import your backend function
+import { exitingExercises } from "../api/authApi"; // Update this path
 
 // ─── DEMO DATA ────────────────────────────────────────────────────────────────
 const DEMO_PLAYERS = [
@@ -15,30 +18,6 @@ const DEMO_PLAYERS = [
   { id:4, name:"Sneha Krishnan", age:22, injury:"—",              team:"Kerala Women", status:"Available", category:"Senior"   },
   { id:5, name:"Priya Menon",    age:19, injury:"—",              team:"Kerala Women", status:"Available", category:"Under-23" },
 ];
-
-const EXERCISE_DB = [
-  { id:1,  name:"Shoulder Circles",                         cat:"Mobility",    joint:"Shoulder",  muscle:"Deltoid",          equip:"None",    pos:"Standing",   emoji:"🔄", desc:"Stand tall and make large circular movements with your arms, forward then backward. Keep movements slow and controlled throughout." },
-  { id:2,  name:"Shoulder Circles in Four Point Kneeling",  cat:"Mobility",    joint:"Shoulder",  muscle:"Rotator Cuff",     equip:"None",    pos:"Kneeling",   emoji:"🔄", desc:"Start in four point kneeling. Lift one hand just off the ground and move your arm in clockwise then anticlockwise circles. Keep arm straight." },
-  { id:3,  name:"Scapular Stabilization",                   cat:"Strength",    joint:"Shoulder",  muscle:"Trapezius",        equip:"Band",    pos:"Standing",   emoji:"💪", desc:"Stand with a resistance band anchored at waist height. Keep shoulder blade retracted as you abduct your arm to 90 degrees." },
-  { id:4,  name:"Combined AROM Shoulder Pendulums",         cat:"Mobility",    joint:"Shoulder",  muscle:"Deltoid",          equip:"None",    pos:"Standing",   emoji:"🔄", desc:"Lean forward and let your arm hang freely. Use body momentum to swing the arm in small circles, gradually increasing the range." },
-  { id:5,  name:"Shoulder Horizontal Abduction",            cat:"Strength",    joint:"Shoulder",  muscle:"Posterior Deltoid",equip:"Band",    pos:"Standing",   emoji:"💪", desc:"With arms at shoulder height and a resistance band, pull arms apart horizontally squeezing shoulder blades together." },
-  { id:6,  name:"Shoulder Taps",                            cat:"Stability",   joint:"Shoulder",  muscle:"Core",             equip:"None",    pos:"Prone",      emoji:"⚖️", desc:"In a high plank, alternate tapping each shoulder with the opposite hand while keeping hips completely still." },
-  { id:7,  name:"Single Leg Bridge",                        cat:"Strength",    joint:"Hip",       muscle:"Glutes",           equip:"None",    pos:"Supine",     emoji:"💪", desc:"Lie on your back with knees bent. Extend one leg and raise hips off the floor. Hold briefly then lower with control." },
-  { id:8,  name:"Clam with Exercise Band",                  cat:"Strength",    joint:"Hip",       muscle:"Gluteus Medius",   equip:"Band",    pos:"Side-lying", emoji:"💪", desc:"Lie on side with band around thighs. Keep feet together and open the top knee like a clamshell against the resistance." },
-  { id:9,  name:"Knee Extension in Sitting",                cat:"Strength",    joint:"Knee",      muscle:"Quadriceps",       equip:"Band",    pos:"Sitting",    emoji:"💪", desc:"Sit on a chair with a resistance band around your ankle. Straighten your leg, hold briefly, then lower slowly." },
-  { id:10, name:"Calf Raise",                               cat:"Strength",    joint:"Ankle",     muscle:"Gastrocnemius",    equip:"None",    pos:"Standing",   emoji:"💪", desc:"Stand feet hip-width apart. Rise slowly onto toes then lower with full control. Use a wall for balance if needed." },
-  { id:11, name:"Child's Pose",                             cat:"Flexibility", joint:"Spine",     muscle:"Latissimus Dorsi", equip:"None",    pos:"Kneeling",   emoji:"🧘", desc:"Sit back on your heels and extend arms forward along the floor. Hold this relaxed stretch breathing deeply." },
-  { id:12, name:"AROM Hip Abduction in Side Lying",         cat:"Mobility",    joint:"Hip",       muscle:"Gluteus Medius",   equip:"None",    pos:"Side-lying", emoji:"🔄", desc:"Lie on side with legs straight. Lift top leg to about 45 degrees then lower slowly. Maintain neutral pelvis throughout." },
-  { id:13, name:"Hamstring Stretch Supine",                 cat:"Flexibility", joint:"Knee",      muscle:"Hamstrings",       equip:"None",    pos:"Supine",     emoji:"🧘", desc:"Lie on back and lift one leg, holding behind the thigh. Gently straighten the knee until you feel the stretch." },
-  { id:14, name:"Bike Ergometer",                           cat:"Cardio",      joint:"Full Body", muscle:"Full Body",        equip:"Machine", pos:"Sitting",    emoji:"🚴", desc:"Set the bike to appropriate resistance. Maintain a steady cadence focusing on smooth circular pedal strokes." },
-  { id:15, name:"Percussion Gun Shoulder",                  cat:"Recovery",    joint:"Shoulder",  muscle:"All",              equip:"Device",  pos:"Sitting",    emoji:"💆", desc:"Apply a percussion massager to the shoulder girdle muscles to promote blood flow and reduce muscle tension." },
-];
-
-console.log('jjjj')
-
-const CATS   = ["All","Mobility","Strength","Stability","Flexibility","Cardio","Recovery"];
-const JOINTS = ["All","Shoulder","Hip","Knee","Ankle","Spine","Full Body"];
-const MUSCS  = ["All","Deltoid","Rotator Cuff","Trapezius","Gluteus Medius","Glutes","Quadriceps","Hamstrings","Core","Gastrocnemius","Latissimus Dorsi","Posterior Deltoid"];
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -121,24 +100,43 @@ const SpinInput = ({ label, val, set, min=1, max=99 }) => (
   </div>
 );
 
-// ─── WORKOUT LIBRARY ──────────────────────────────────────────────────────────
-function WorkoutLibrary({ added, onAdd, onRemove, onCardClick, selectedId }) {
+// ─── WORKOUT LIBRARY WITH BACKEND ─────────────────────────────────────────────
+function WorkoutLibrary({ added, onAdd, onRemove, onCardClick, selectedId, exercises, loading, error }) {
   const [search,   setSearch]   = useState("");
   const [showFil,  setShowFil]  = useState(false);
-  const [fil,      setFil]      = useState({ cat:"All", joint:"All", muscle:"All" });
+  const [fil,      setFil]      = useState({ cat:"All", joint:"All" });
 
   const activeCount = Object.values(fil).filter(v=>v!=="All").length;
-  const isAdded = id => added.some(a=>a.id===id);
+  const isAdded = id => added.some(a=>a._id===id || a.id===id);
 
-  const visible = EXERCISE_DB.filter(e => {
+  // Extract unique categories and joints from backend data
+  const CATS = ["All", ...new Set(exercises.map(e => e.category))];
+  const JOINTS = ["All", ...new Set(exercises.map(e => e.jointArea))];
+
+  const visible = exercises.filter(e => {
     const q = search.toLowerCase();
     return (
-      (!q || e.name.toLowerCase().includes(q) || e.cat.toLowerCase().includes(q)) &&
-      (fil.cat   ==="All" || e.cat   ===fil.cat) &&
-      (fil.joint ==="All" || e.joint ===fil.joint) &&
-      (fil.muscle==="All" || e.muscle===fil.muscle)
+      (!q || e.name.toLowerCase().includes(q) || (e.category && e.category.toLowerCase().includes(q))) &&
+      (fil.cat   ==="All" || e.category === fil.cat) &&
+      (fil.joint ==="All" || e.jointArea === fil.joint)
     );
   });
+
+  if (loading) {
+    return (
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", color:"#aaa" }}>
+        Loading exercises...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", color:"#cc3333" }}>
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div style={{ display:"flex", height:"100%", overflow:"hidden" }}>
@@ -163,7 +161,7 @@ function WorkoutLibrary({ added, onAdd, onRemove, onCardClick, selectedId }) {
         {/* Filter drawer */}
         {showFil && (
           <div style={{ padding:"12px 16px", backgroundColor:"#fff3e8", borderBottom:"1px solid #ffd8b0", display:"flex", flexWrap:"wrap", gap:"14px", alignItems:"flex-end" }}>
-            {[["Category","cat",CATS],["Joint / Area","joint",JOINTS],["Muscle","muscle",MUSCS]].map(([lbl,key,opts])=>(
+            {[["Category","cat",CATS],["Joint / Area","joint",JOINTS]].map(([lbl,key,opts])=>(
               <div key={key}>
                 <div style={{ fontSize:"10px", fontWeight:"700", color:"#888", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:"4px" }}>{lbl}</div>
                 <div style={{ position:"relative" }}>
@@ -175,7 +173,7 @@ function WorkoutLibrary({ added, onAdd, onRemove, onCardClick, selectedId }) {
                 </div>
               </div>
             ))}
-            <button onClick={()=>setFil({cat:"All",joint:"All",muscle:"All"})}
+            <button onClick={()=>setFil({cat:"All",joint:"All"})}
               style={{ display:"flex", alignItems:"center", gap:"5px", padding:"8px 12px", fontSize:"12px", fontWeight:"600", color:"#cc3333", border:"1.5px solid #ffc5c5", backgroundColor:"#fff0f0", borderRadius:"7px", cursor:"pointer" }}
               onMouseEnter={e=>(e.currentTarget.style.backgroundColor="#ffe0e0")}
               onMouseLeave={e=>(e.currentTarget.style.backgroundColor="#fff0f0")}
@@ -186,24 +184,29 @@ function WorkoutLibrary({ added, onAdd, onRemove, onCardClick, selectedId }) {
         {/* Exercise grid */}
         <div style={{ flex:1, overflowY:"auto", padding:"12px", display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(145px,1fr))", gap:"10px", alignContent:"start" }}>
           {visible.map(ex => {
-            const active  = selectedId===ex.id;
-            const already = isAdded(ex.id);
+            const exId = ex._id || ex.id;
+            const active  = selectedId===exId;
+            const already = isAdded(exId);
             return (
-              <div key={ex.id} onClick={()=>onCardClick(ex)}
+              <div key={exId} onClick={()=>{ onCardClick(ex); if(!already) onAdd(ex); }}
                 style={{ borderRadius:"10px", border:`2px solid ${active?"#e87722":"#e8e8e8"}`, overflow:"hidden", cursor:"pointer", backgroundColor:active?"#fff3e8":"#fff", transition:"all 0.15s", boxShadow:active?"0 0 0 3px rgba(232,119,34,0.12)":"0 1px 4px rgba(0,0,0,0.05)" }}
                 onMouseEnter={e=>{ if(!active) e.currentTarget.style.borderColor="#ffd8b0"; }}
                 onMouseLeave={e=>{ if(!active) e.currentTarget.style.borderColor="#e8e8e8"; }}
               >
-                {/* Thumbnail area */}
-                <div style={{ height:"76px", background:"linear-gradient(135deg,#f5f5f5,#e0e0e0)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"26px", userSelect:"none" }}>
-                  {ex.emoji}
+                {/* Thumbnail area with GIF */}
+                <div style={{ height:"76px", background:"linear-gradient(135deg,#f5f5f5,#e0e0e0)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"26px", userSelect:"none", overflow:"hidden" }}>
+                  {ex.gifUrl ? (
+                    <img src={ex.gifUrl} alt={ex.name} style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
+                  ) : (
+                    <span>📋</span>
+                  )}
                 </div>
                 {/* Info */}
                 <div style={{ padding:"9px 10px" }}>
                   <div style={{ fontSize:"12px", fontWeight:"700", color:"#222", lineHeight:"1.3", marginBottom:"7px" }}>{ex.name}</div>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                    <span style={{ fontSize:"10px", fontWeight:"600", backgroundColor:"#f5f5f5", color:"#888", borderRadius:"4px", padding:"2px 7px" }}>{ex.cat}</span>
-                    <button onClick={e=>{ e.stopPropagation(); already?onRemove(ex.id):onAdd(ex); }}
+                    <span style={{ fontSize:"10px", fontWeight:"600", backgroundColor:"#f5f5f5", color:"#888", borderRadius:"4px", padding:"2px 7px" }}>{ex.category}</span>
+                    <button onClick={e=>{ e.stopPropagation(); already?onRemove(exId):onAdd(ex); }}
                       style={{ width:"20px", height:"20px", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", backgroundColor:already?"#cc3333":"#e87722", border:"none", cursor:"pointer", transition:"background 0.15s" }}
                       onMouseEnter={e=>(e.currentTarget.style.backgroundColor=already?"#bb2222":"#d06a18")}
                       onMouseLeave={e=>(e.currentTarget.style.backgroundColor=already?"#cc3333":"#e87722")}
@@ -228,19 +231,22 @@ function WorkoutLibrary({ added, onAdd, onRemove, onCardClick, selectedId }) {
           <span style={{ fontSize:"11px", fontWeight:"700", color:"#888", textTransform:"uppercase", letterSpacing:"0.5px" }}>Added</span>
           <Badge label={String(added.length)} bg="#fff3e8" color="#e87722" border="#ffd8b0"/>
         </div>
-        <div style={{ flex:1, overflowY:"auto", padding:"10px", display:"flex", flexDirection:"column", gap:"8px" }}>
+        <div style={{ flex:1, overflowY:"auto", padding:"10px", display:"flex", flexDirection:"column", gap:"8px", scrollBehavior:"smooth", msOverflowStyle:"none", scrollbarWidth:"none" }}>
+          <style>{`
+            div::-webkit-scrollbar { display: none; }
+          `}</style>
           {added.length===0 ? (
             <div style={{ textAlign:"center", paddingTop:"32px" }}>
               <Dumbbell size={22} style={{ color:"#ccc", margin:"0 auto 8px", display:"block" }}/>
               <p style={{ fontSize:"12px", color:"#ccc" }}>Click + to add exercises</p>
             </div>
           ) : added.map(ex=>(
-            <div key={ex.id} style={card({ padding:"10px", display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"6px" })}>
+            <div key={ex._id || ex.id} style={card({ padding:"10px", display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:"6px" })}>
               <div style={{ minWidth:0 }}>
                 <div style={{ fontSize:"12px", fontWeight:"700", color:"#222", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ex.name}</div>
                 <div style={{ fontSize:"10px", color:"#aaa", marginTop:"3px" }}>{ex.sets}×{ex.reps} · {ex.rest}s</div>
               </div>
-              <button onClick={()=>onRemove(ex.id)}
+              <button onClick={()=>onRemove(ex._id || ex.id)}
                 style={{ background:"none", border:"none", cursor:"pointer", color:"#ddd", padding:"0", flexShrink:0, display:"flex" }}
                 onMouseEnter={e=>(e.currentTarget.style.color="#cc3333")}
                 onMouseLeave={e=>(e.currentTarget.style.color="#ddd")}
@@ -259,7 +265,7 @@ function ExerciseModal({ exercise, existing, onSave, onClose }) {
   const [reps,  setReps]  = useState(existing?.reps  ?? 10);
   const [rest,  setRest]  = useState(existing?.rest  ?? 60);
   const [notes, setNotes] = useState(existing?.notes ?? "");
-  const [tab,   setTab]   = useState("video");
+  const [tab,   setTab]   = useState("gif");
   if (!exercise) return null;
 
   return (
@@ -274,11 +280,11 @@ function ExerciseModal({ exercise, existing, onSave, onClose }) {
         </div>
 
         <div style={{ display:"flex", gap:"0", padding:"22px 24px" }}>
-          {/* Left: video + description */}
+          {/* Left: gif + description */}
           <div style={{ flex:1, paddingRight:"22px", borderRight:"1px solid #f0f0f0" }}>
             {/* Tab */}
             <div style={{ display:"flex", gap:"8px", marginBottom:"14px", flexWrap:"wrap" }}>
-              {[{k:"video",icon:<Play size={11}/>,label:"Video"},{k:"images",icon:<ImgIcon size={11}/>,label:"Images"}].map(t=>(
+              {[{k:"gif",icon:<Play size={11}/>,label:"GIF"},{k:"images",icon:<ImgIcon size={11}/>,label:"Images"}].map(t=>(
                 <button key={t.k} onClick={()=>setTab(t.k)}
                   style={{ display:"flex", alignItems:"center", gap:"5px", padding:"6px 12px", borderRadius:"7px", border:`1.5px solid ${tab===t.k?"#e87722":"#e0e0e0"}`, backgroundColor:tab===t.k?"#fff3e8":"#fff", color:tab===t.k?"#e87722":"#888", fontSize:"12px", fontWeight:"700", cursor:"pointer" }}>
                   {t.icon}{t.label}
@@ -291,19 +297,23 @@ function ExerciseModal({ exercise, existing, onSave, onClose }) {
             </div>
 
             {/* Description */}
-            <p style={{ fontSize:"13px", color:"#555", lineHeight:"1.65", marginBottom:"16px" }}>{exercise.desc}</p>
+            <p style={{ fontSize:"13px", color:"#555", lineHeight:"1.65", marginBottom:"16px" }}>{exercise.description || "No description available"}</p>
 
-            {/* Video placeholder */}
-            <div style={{ borderRadius:"10px", background:"linear-gradient(135deg,#f0f0f0,#e0e0e0)", height:"170px", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:"16px" }}>
-              <div style={{ width:"48px", height:"48px", borderRadius:"50%", backgroundColor:"#e87722", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", boxShadow:"0 2px 10px rgba(232,119,34,0.35)" }}
-                onMouseEnter={e=>(e.currentTarget.style.backgroundColor="#d06a18")}
-                onMouseLeave={e=>(e.currentTarget.style.backgroundColor="#e87722")}
-              ><Play size={18} style={{ color:"#fff", marginLeft:"2px" }}/></div>
+            {/* GIF Display */}
+            <div style={{ borderRadius:"10px", background:"linear-gradient(135deg,#f0f0f0,#e0e0e0)", height:"170px", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:"16px", overflow:"hidden" }}>
+              {exercise.gifUrl ? (
+                <img src={exercise.gifUrl} alt={exercise.name} style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
+              ) : (
+                <div style={{ textAlign:"center" }}>
+                  <ImgIcon size={32} style={{ color:"#bbb", marginBottom:"8px" }}/>
+                  <p style={{ fontSize:"12px", color:"#aaa", margin:0 }}>No GIF available</p>
+                </div>
+              )}
             </div>
 
             {/* Tags */}
             <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
-              {[exercise.cat,exercise.joint,exercise.muscle,exercise.equip].filter(Boolean).map(t=>(
+              {[exercise.category, exercise.jointArea, exercise.difficulty, exercise.position].filter(Boolean).map(t=>(
                 <Badge key={t} label={t} bg="#fff3e8" color="#e87722" border="#ffd8b0"/>
               ))}
             </div>
@@ -481,21 +491,21 @@ function AssignModal({ player, programName, onConfirm, onClose }) {
   );
 }
 
-// ─── CREATE PROGRAM MODAL ─────────────────────────────────────────────────────
-function CreateProgramModal({ player, onClose, onCreated }) {
+// ─── CREATE PROGRAM MODAL ────────────────────────────���────────────────────────
+function CreateProgramModal({ player, onClose, onCreated, exercises, loading, error }) {
   const [tab,        setTab]       = useState("workout");
   const [progName,   setProgName]  = useState("");
   const [progNote,   setProgNote]  = useState("");
-  const [exercises,  setExercises] = useState([]);
+  const [addedExercises, setAddedExercises] = useState([]);
   const [selEx,      setSelEx]     = useState(null);
   const [exModal,    setExModal]   = useState(false);
   const [goals,      setGoals]     = useState("");
   const [assignOpen, setAssignOpen]= useState(false);
 
-  const handleAdd    = ex  => { if(!exercises.some(e=>e.id===ex.id)) setExercises(p=>[...p,{...ex,sets:3,reps:10,rest:60,notes:""}]); };
-  const handleRemove = id  => setExercises(p=>p.filter(e=>e.id!==id));
+  const handleAdd    = ex  => { if(!addedExercises.some(e=>e._id===ex._id || e.id===ex.id)) setAddedExercises(p=>[...p,{...ex,sets:3,reps:10,rest:60,notes:""}]); };
+  const handleRemove = id  => setAddedExercises(p=>p.filter(e=>e._id!==id && e.id!==id));
   const handleClick  = ex  => { setSelEx(ex); setExModal(true); };
-  const handleSave   = upd => { setExercises(p=>p.some(e=>e.id===upd.id)?p.map(e=>e.id===upd.id?upd:e):[...p,upd]); setExModal(false); };
+  const handleSave   = upd => { setAddedExercises(p=>p.some(e=>(e._id || e.id)===(upd._id || upd.id))?p.map(e=>(e._id || e.id)===(upd._id || upd.id)?upd:e):[...p,upd]); setExModal(false); };
 
   const TABS = [
     { key:"weekly",  label:"⊙ Weekly Goals"    },
@@ -521,7 +531,7 @@ function CreateProgramModal({ player, onClose, onCreated }) {
             <h2 style={{ fontSize:"18px", fontWeight:"800", color:"#222", margin:0 }}>{player.name}</h2>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-            <OBtn onClick={()=>exercises.length?setAssignOpen(true):alert("Add at least one exercise first")}
+            <OBtn onClick={()=>addedExercises.length?setAssignOpen(true):alert("Add at least one exercise first")}
               style={{ padding:"8px 16px", fontSize:"13px" }}>
               <CheckCircle2 size={13}/> Assign to Profile
             </OBtn>
@@ -558,7 +568,7 @@ function CreateProgramModal({ player, onClose, onCreated }) {
                   style={inputStyle} onFocus={fo} onBlur={fb}/>
               </div>
               <div style={{ flex:1, overflow:"hidden" }}>
-                <WorkoutLibrary added={exercises} onAdd={handleAdd} onRemove={handleRemove} onCardClick={handleClick} selectedId={selEx?.id}/>
+                <WorkoutLibrary added={addedExercises} onAdd={handleAdd} onRemove={handleRemove} onCardClick={handleClick} selectedId={selEx?._id || selEx?.id} exercises={exercises} loading={loading} error={error}/>
               </div>
             </>
           )}
@@ -573,18 +583,18 @@ function CreateProgramModal({ player, onClose, onCreated }) {
         {/* Footer */}
         <div style={{ display:"flex", justifyContent:"flex-end", gap:"10px", padding:"14px 24px", borderTop:"1px solid #f0f0f0", flexShrink:0 }}>
           <GhostBtn onClick={onClose}><ArrowLeft size={13}/> Cancel</GhostBtn>
-          <OBtn onClick={()=>exercises.length?setAssignOpen(true):alert("Add at least one exercise to the workout")}>
+          <OBtn onClick={()=>addedExercises.length?setAssignOpen(true):alert("Add at least one exercise to the workout")}>
             <Save size={13}/> Save Session
           </OBtn>
         </div>
       </div>
 
       {exModal && selEx && (
-        <ExerciseModal exercise={selEx} existing={exercises.find(e=>e.id===selEx.id)} onSave={handleSave} onClose={()=>setExModal(false)}/>
+        <ExerciseModal exercise={selEx} existing={addedExercises.find(e=>(e._id || e.id)===(selEx._id || selEx.id))} onSave={handleSave} onClose={()=>setExModal(false)}/>
       )}
       {assignOpen && (
         <AssignModal player={player} programName={progName}
-          onConfirm={assignment=>{ onCreated({name:progName||"Rehab Program",notes:progNote,exercises,goals},assignment); setAssignOpen(false); }}
+          onConfirm={assignment=>{ onCreated({name:progName||"Rehab Program",notes:progNote,exercises:addedExercises,goals},assignment); setAssignOpen(false); }}
           onClose={()=>setAssignOpen(false)}/>
       )}
     </div>
@@ -661,23 +671,30 @@ function ProgramReport({ player, program, assignment, onBack }) {
           ))}
         </div>
 
-        {/* Exercise table */}
+        {/* Exercise table with GIFs */}
         <div style={{ borderRadius:"10px", border:"1px solid #e8e8e8", overflow:"hidden" }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"13px" }}>
             <thead>
               <tr style={{ backgroundColor:"#fafafa" }}>
-                {["#","Exercise","Category","Sets","Reps","Rest","Notes"].map(h=>(
+                {["#","GIF","Exercise","Category","Sets","Reps","Rest","Notes"].map(h=>(
                   <th key={h} style={{ padding:"10px 12px", textAlign:"left", fontWeight:"700", borderBottom:"2px solid #e8e8e8", fontSize:"11px", color:"#888", textTransform:"uppercase", letterSpacing:"0.4px" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {program.exercises.map((ex,i)=>(
-                <tr key={ex.id} style={{ backgroundColor:i%2===0?"#fff":"#fafafa" }}>
+                <tr key={ex._id || ex.id} style={{ backgroundColor:i%2===0?"#fff":"#fafafa" }}>
                   <td style={{ padding:"10px 12px", color:"#aaa", fontSize:"11px" }}>{i+1}</td>
+                  <td style={{ padding:"10px 12px" }}>
+                    {ex.gifUrl ? (
+                      <img src={ex.gifUrl} alt={ex.name} style={{ width:"40px", height:"40px", borderRadius:"6px", objectFit:"cover" }}/>
+                    ) : (
+                      <div style={{ width:"40px", height:"40px", backgroundColor:"#f0f0f0", borderRadius:"6px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"10px", color:"#ccc" }}>—</div>
+                    )}
+                  </td>
                   <td style={{ padding:"10px 12px", fontWeight:"700", color:"#222" }}>{ex.name}</td>
                   <td style={{ padding:"10px 12px" }}>
-                    <Badge label={ex.cat} bg="#fff3e8" color="#e87722" border="#ffd8b0"/>
+                    <Badge label={ex.category} bg="#fff3e8" color="#e87722" border="#ffd8b0"/>
                   </td>
                   <td style={{ padding:"10px 12px", fontWeight:"800", color:"#e87722" }}>{ex.sets}</td>
                   <td style={{ padding:"10px 12px", fontWeight:"700", color:"#222" }}>{ex.reps}</td>
@@ -706,6 +723,29 @@ export default function RehabProgram({ players: propPlayers }) {
   const [activePlayer, setActivePlayer] = useState(null);
   const [programs,     setPrograms]     = useState({});
   const [viewing,      setViewing]      = useState(null);
+  const [exercises,    setExercises]    = useState([]);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState("");
+
+  // Fetch exercises on component mount
+  useEffect(() => {
+    const fetchExercisesData = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await exitingExercises();
+        console.log(res.data, "Fetched Data");
+        setExercises(res.data.workouts || []);
+      } catch (err) {
+        setError("Failed to load exercises. Please try again.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExercisesData();
+  }, []);
 
   const handleCreated = (program, assignment) => {
     setPrograms(prev=>({...prev,[activePlayer.id]:[...(prev[activePlayer.id]||[]),{program,assignment}]}));
@@ -835,7 +875,7 @@ export default function RehabProgram({ players: propPlayers }) {
       </div>
 
       {creating&&activePlayer&&(
-        <CreateProgramModal player={activePlayer} onClose={()=>setCreating(false)} onCreated={handleCreated}/>
+        <CreateProgramModal player={activePlayer} onClose={()=>setCreating(false)} onCreated={handleCreated} exercises={exercises} loading={loading} error={error}/>
       )}
     </div>
   );

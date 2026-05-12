@@ -1,14 +1,20 @@
 import API from "./axios"
 
-// 🔥 LOGIN API
+
 export const loginUser = async (data) => {
   try {
     const res = await API.post("/auth/login", data)
-    console.log(res.data,'koooooooo')
+    console.log(res)
     return res.data
   } catch (error) {
     throw error.response?.data || error.message
   }
+}
+
+export const exitingExercises=async()=>{
+
+   return await API.get('/excercise/existingworkouts')
+
 }
 
 export const getPlayer = (id) => API.get(`/player/${id}`)
