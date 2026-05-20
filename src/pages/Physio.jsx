@@ -285,6 +285,8 @@ const Physio = () => {
     />
   );
 
+console.log('hiii i am here i wha tabput is are theere i sma here ')
+
   // ── PENDING PLANS ─────────────────────────────────────────────────────────
   if (view === V_PENDING_PLANS) return (
     <div style={{ padding: "28px", maxWidth: "860px", margin: "0 auto" }}>

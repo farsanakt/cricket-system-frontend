@@ -6,7 +6,12 @@ import {
   FileText, MessageSquare, Star, Send, Eye, Shield,
   Target, TrendingUp, AlertTriangle,
 } from "lucide-react";
+import socket from "../socket";
 
+import {
+  getAllCoaches,
+  getCoachLocations,
+} from "../api/coachApi";
 // ─── SHARED HELPERS ───────────────────────────────────────────────────────────
 const card = (x = {}) => ({
   backgroundColor: "#fff", borderRadius: "10px",
@@ -435,7 +440,8 @@ function AddActivityForm({ date, onSave, onCancel }) {
 
 // ─── MAIN COACHES COMPONENT ───────────────────────────────────────────────────
 export default function Coaches() {
-  const [coaches,      setCoaches]      = useState(INITIAL_COACHES);
+const [coaches, setCoaches] =
+useState([]);
   const [view,         setView]         = useState(V.LIST);
   const [activeCoach,  setActiveCoach]  = useState(null);
   const [activeTab,    setActiveTab]    = useState("overview");
@@ -447,11 +453,152 @@ export default function Coaches() {
   const [feedbackFor,  setFeedbackFor]  = useState(null);
   const [toast,        setToast]        = useState(null);
 
+  useEffect(() => {
+
+  fetchCoaches();
+
+  socket.on(
+    "coachLocationUpdated",
+
+    (liveLocation) => {
+
+      console.log(
+        "LIVE UPDATE:",
+        liveLocation
+      );
+
+      setCoaches((prev) =>
+        prev.map((coach) => {
+
+          if (
+            coach._id ===
+            liveLocation.coachId
+          ) {
+
+            return {
+
+              ...coach,
+
+              currentGps: {
+
+                lat:
+                  liveLocation.latitude,
+
+                lng:
+                  liveLocation.longitude,
+
+                inGeofence: true,
+
+                lastSeen: "Live",
+
+              },
+
+            };
+
+          }
+
+          return coach;
+
+        })
+      );
+
+    }
+  );
+
+  return () => {
+
+    socket.off(
+      "coachLocationUpdated"
+    );
+
+  };
+
+}, []);
+
   // Add coach form
   const [addForm, setAddForm] = useState({ name: "", role: "", phone: "", email: "", teams: "" });
   const setAF = (k, v) => setAddForm(f => ({ ...f, [k]: v }));
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
+
+  const fetchCoaches = async () => {
+
+  try {
+
+    // coaches
+    const coachRes =
+       await getAllCoaches();
+   console.log(coachRes,'this is thd')
+    // gps
+    const locationRes =
+      await getCoachLocations();
+
+    const locations =
+      locationRes.data;
+
+    const formatted =
+      coachRes.data.map((coach) => {
+
+        const gps =
+          locations.find(
+            (loc) =>
+              loc.coachId === coach._id
+          );
+
+        return {
+
+          ...coach,
+
+          id: coach._id,
+
+          avatar:
+            coach.name
+              ?.split(" ")
+              .map((w) => w[0])
+              .join("")
+              .toUpperCase(),
+
+          teams: [],
+
+          attendance: {},
+
+          activities: {},
+
+          gpsHistory: [],
+
+          status: "Active",
+
+          currentGps: {
+
+            lat:
+              gps?.latitude || null,
+
+            lng:
+              gps?.longitude || null,
+
+            inGeofence:
+              gps ? true : false,
+
+            lastSeen:
+              gps
+                ? "Live"
+                : "Offline",
+
+          },
+
+        };
+
+      });
+
+    setCoaches(formatted);
+
+  } catch (error) {
+
+    console.log(error);
+
+  }
+
+};
 
   const openCoach = (coach) => { setActiveCoach(coach); setActiveTab("overview"); setView(V.DETAIL); };
 
