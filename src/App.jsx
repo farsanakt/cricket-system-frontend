@@ -17,7 +17,7 @@ import Login from './pages/Login'
 // 🔥 PHYSIO SUB PAGES
 import Consultation from './components/PhysioSessionForm'
 import RehabProgram from './pages/RehabProgram'
-// import Assessment from './pages/Assessment'
+import Assessment from './pages/Physioassessments'
 // import PhysioReports from './pages/PhysioReports'
 
 export default function App() {
@@ -136,8 +136,8 @@ export default function App() {
         case '/exercises':
   return <ExerciseManager />
 
-      // case '/physio/assessment':
-      //   return <Assessment />
+      case '/assessment':
+        return <Assessment />
 
       // case '/physio/reports':
       //   return <PhysioReports />
@@ -184,8 +184,8 @@ export default function App() {
       case '/rehab':
         return 'Rehab Program'
 
-      // case '/physio/assessment':
-      //   return 'Assessment'
+      case '/assessment':
+        return 'Assessment'
 
       // case '/physio/reports':
       //   return 'Physio Reports'

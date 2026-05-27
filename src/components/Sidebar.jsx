@@ -34,7 +34,7 @@ const NAV_ITEMS = [
     children: [
       { id: 'physio-consultation', label: 'Consultation', icon: ClipboardList, path: '/consultation' },
       { id: 'physio-rehab', label: 'Rehab Program', icon: Dumbbell, path: '/rehab' },
-      { id: 'physio-assessment', label: 'Assessment', icon: Activity, path: '/physio/assessment' },
+      { id: 'physio-assessment', label: 'Assessment', icon: Activity, path: '/assessment' },
       { id: 'physio-reports', label: 'Reports', icon: FileText, path: '/physio/reports' },
     ],
   },

@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
 const socket = io(
-  "https://cricket-backend-chwe.onrender.com"
+  "http://localhost:5000/api"
 );
 
 export default socket;
