@@ -2,7 +2,7 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL:
-    "https://cricket-backend-chwe.onrender.com/api",
+    "http://168.144.149.133:5000",
 });
 
 
